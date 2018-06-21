@@ -1,19 +1,24 @@
 package id.web.aiueo.androidsplashscreen;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.Snackbar;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity implements SwipeRefreshLayout.OnRefreshListener{
 
@@ -44,6 +49,7 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
         webSettings.setJavaScriptEnabled(true);
         webSettings.setAllowFileAccess(true);
         webSettings.setAppCacheEnabled(true);
+        mWebView.setWebViewClient(new Callback());
         loadWebsite();
     }
     private void loadWebsite() {
@@ -58,31 +64,56 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
         }
     }
 
+    public class Callback extends WebViewClient {
+        public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+            Toast.makeText(getApplicationContext(), "Failed loading app!", Toast.LENGTH_SHORT).show();
+        }
+        public boolean shouldOverrideUrlLoading(WebView view, String url) {
+            if (url.endsWith(".pdf")) {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                return true;
+            }else if (url.contains("mailto:")) {
+                view.getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                return true;
+            }else if (url.startsWith("tel:")) {
+                Intent intent = new Intent(Intent.ACTION_DIAL, Uri.parse(url));
+                startActivity(intent);
+                return true;
+            }else {
+                view.loadUrl(url);
+                return true;
+            }
+        }
+
+        public void onPageStarted(WebView view, String url, Bitmap favicon) {
+            swipeRefreshLayout.setRefreshing(true);
+        }
+
+
+        public void onPageFinished(WebView view, String url) {
+            swipeRefreshLayout.setRefreshing(false);
+        }
+    }
+
     @Override
     public void onRefresh() {
         mWebView.reload();
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+    public boolean onKeyDown(int keyCode, @NonNull KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            switch (keyCode) {
+                case KeyEvent.KEYCODE_BACK:
+                    if (mWebView.canGoBack()) {
+                        mWebView.goBack();
+                    } else {
+                        finish();
+                    }
+                    return true;
+            }
         }
-
-        return super.onOptionsItemSelected(item);
+        return super.onKeyDown(keyCode, event);
     }
 
 
